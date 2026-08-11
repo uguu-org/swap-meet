@@ -1,0 +1,7 @@
+name=Swap Meet
+author=uguu.org
+description=Connect the items with those who want them
+bundleID=org.uguu.SwapMeet
+version=0.2
+buildNumber=2
+imagePath=launcher/
