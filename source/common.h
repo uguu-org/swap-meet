@@ -51,4 +51,7 @@
 // Syntactic sugar, generate random number in the range of min..max.
 #define RAND_RANGE(min, max)  (RAND((max) - (min)) + (min))
 
+// A convenient pair type.
+typedef struct { int x, y; } XY;
+
 #endif  // COMMON_H_

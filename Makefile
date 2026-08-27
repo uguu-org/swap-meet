@@ -58,11 +58,16 @@ refresh_data:
 	cp data/build/pd_player.png source/images/player-table-80-48.png
 	cp data/build/pd_goal.png source/images/goal.png
 	cp data/build/pd_items.png source/images/items-table-48-48.png
+	cp data/build/pd_small_items.png source/images/small_items-table-16-16.png
 	cp data/build/pd_floor.png source/images/floor-table-32-32.png
+	cp data/build/pd_landmarks.png source/images/landmarks-table-192-192.png
+	cp data/build/pd_fireworks.png source/images/fireworks-table-100-100.png
 	cp data/build/pd_swap.png source/images/swap-table-256-112.png
+	cp data/build/pd_direction.png source/images/direction-table-72-72.png
 	cp data/build/pd_title.png source/images/title.png
 	cp data/build/pd_card.png source/launcher/card.png
 	cp data/build/pd_icon.png source/launcher/icon.png
+	cp data/build/pd_icon_highlighted.png source/launcher/icon-highlighted/1.png
 	cp data/build/pd_gnossienne.c source/gnossienne.c
 	cp data/build/guitar1.wav source/sounds/m11.wav
 	cp data/build/guitar2.wav source/sounds/m12.wav

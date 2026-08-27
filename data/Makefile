@@ -1,5 +1,5 @@
 # Build images, sounds and other supporting data.  Takes ~2 minutes to build
-# and costs ~5M of disk space.
+# and costs ~20M of disk space.
 #
 # Requires gcc, perl, ruby, netpbm, ImageMagick, Inkscape, and ffmpeg.
 # gcc also needs libpng, and perl needs libxml.
@@ -17,11 +17,16 @@ TARGETS = \
 	$(BUILD_DIR)/pd_player.png \
 	$(BUILD_DIR)/pd_goal.png \
 	$(BUILD_DIR)/pd_items.png \
+	$(BUILD_DIR)/pd_small_items.png \
 	$(BUILD_DIR)/pd_floor.png \
+	$(BUILD_DIR)/pd_landmarks.png \
+	$(BUILD_DIR)/pd_fireworks.png \
 	$(BUILD_DIR)/pd_swap.png \
+	$(BUILD_DIR)/pd_direction.png \
 	$(BUILD_DIR)/pd_title.png \
 	$(BUILD_DIR)/pd_card.png \
 	$(BUILD_DIR)/pd_icon.png \
+	$(BUILD_DIR)/pd_icon_highlighted.png \
 	$(BUILD_DIR)/pd_gnossienne.c \
 	$(BUILD_DIR)/itch_cover.png \
 	$(BUILD_DIR)/guitar1.wav \
@@ -38,10 +43,17 @@ CFLAGS = -march=native -O3 -Wall -Wextra -pedantic
 
 # Sound encoding options.
 FFMPEG = ffmpeg -loglevel fatal
-SOUND_OPTIONS = -acodec pcm_s16le -ar 22050
+SOUND_OPTIONS = -acodec pcm_s16le -ar 44100
 
-# Rendering resolution for Godot images.
-GD_DPI=$(shell echo $$(($(GD_ZOOM) * 96)) )
+# Render resolution for tree leaves.
+#
+# Trees were recycled from Old Pond project:
+# https://github.com/uguu-org/old-pond/blob/master/data/world.svg
+#
+# But the size of the trees didn't match the size of sprites for this
+# project, so they are rendered at a higher resolution (instead of the
+# default 96dpi) to make them a bit bigger.
+TREE_DPI=144
 
 # ......................................................................
 # {{{ Primary build artifacts.
@@ -58,10 +70,22 @@ $(BUILD_DIR)/pd_goal.png: $(BUILD_DIR)/pd_t_goal.png optimize_png.pl
 $(BUILD_DIR)/pd_items.png: $(BUILD_DIR)/pd_t_items.png optimize_png.pl
 	perl optimize_png.pl $< > $@
 
+$(BUILD_DIR)/pd_small_items.png: $(BUILD_DIR)/pd_t_small_items.png optimize_png.pl
+	perl optimize_png.pl $< > $@
+
 $(BUILD_DIR)/pd_floor.png: $(BUILD_DIR)/pd_t_floor.png optimize_png.pl
 	perl optimize_png.pl $< > $@
 
+$(BUILD_DIR)/pd_landmarks.png: $(BUILD_DIR)/pd_t_landmarks.png optimize_png.pl
+	perl optimize_png.pl $< > $@
+
+$(BUILD_DIR)/pd_fireworks.png: $(BUILD_DIR)/pd_t_fireworks.png optimize_png.pl
+	perl optimize_png.pl $< > $@
+
 $(BUILD_DIR)/pd_swap.png: $(BUILD_DIR)/pd_t_swap.png optimize_png.pl
+	perl optimize_png.pl $< > $@
+
+$(BUILD_DIR)/pd_direction.png: $(BUILD_DIR)/pd_t_direction.png optimize_png.pl
 	perl optimize_png.pl $< > $@
 
 $(BUILD_DIR)/pd_title.png: $(BUILD_DIR)/pd_t_title.png optimize_png.pl
@@ -71,6 +95,9 @@ $(BUILD_DIR)/pd_card.png: $(BUILD_DIR)/pd_t_card.png optimize_png.pl
 	perl optimize_png.pl $< > $@
 
 $(BUILD_DIR)/pd_icon.png: $(BUILD_DIR)/pd_t_icon.png optimize_png.pl
+	perl optimize_png.pl $< > $@
+
+$(BUILD_DIR)/pd_icon_highlighted.png: $(BUILD_DIR)/pd_t_icon_highlighted.png optimize_png.pl
 	perl optimize_png.pl $< > $@
 
 $(BUILD_DIR)/itch_cover.png: $(BUILD_DIR)/t_itch_cover.png optimize_png.pl
@@ -112,19 +139,34 @@ $(BUILD_DIR)/pd_t_goal.png: $(BUILD_DIR)/pd_t_world.png
 	magick $< +repage -crop '96x96+720+544' $@
 
 $(BUILD_DIR)/pd_t_items.png: $(BUILD_DIR)/pd_t_world.png
-	magick $< +repage -crop '192x720+512+592' $@
+	magick $< +repage -crop '192x1008+512+592' $@
+
+$(BUILD_DIR)/pd_t_small_items.png: $(BUILD_DIR)/pd_t_world.png
+	magick $< +repage -crop '16x336+768+1280' $@
 
 $(BUILD_DIR)/pd_t_floor.png: $(BUILD_DIR)/pd_t_world.png
-	magick $< +repage -crop '256x128+768+928' $@
+	magick $< +repage -crop '256x160+768+928' $@
+
+$(BUILD_DIR)/pd_t_landmarks.png: $(BUILD_DIR)/pd_t_trees_gray.png $(BUILD_DIR)/pd_t_extra_landmarks_gray.png $(BUILD_DIR)/tile_dither.exe
+	magick $(BUILD_DIR)/pd_t_trees_gray.png $(BUILD_DIR)/pd_t_extra_landmarks_gray.png +append png:- | $(BUILD_DIR)/tile_dither.exe - $@ 192 192
 
 $(BUILD_DIR)/pd_t_swap.png: $(BUILD_DIR)/pd_t_world_ordered.png $(BUILD_DIR)/crop_table.exe
 	magick $< +repage -crop '256x256+768+656' png:- | $(BUILD_DIR)/crop_table.exe 256 128 256 112 0 0 > $@
+
+$(BUILD_DIR)/pd_t_direction.png: $(BUILD_DIR)/pd_t_world_ordered.png $(BUILD_DIR)/crop_table.exe
+	magick $< +repage -crop '160x160+824+1288' png:- | $(BUILD_DIR)/crop_table.exe 80 80 72 72 4 4 > $@
 
 $(BUILD_DIR)/pd_t_title.png: $(BUILD_DIR)/pd_t_world.png
 	magick $< +repage -crop '400x240+0+0' $@
 
 $(BUILD_DIR)/pd_t_card.png: $(BUILD_DIR)/pd_t_world.png
 	magick $< +repage -crop '350x155+25+43' $@
+
+$(BUILD_DIR)/pd_t_icon.png: $(BUILD_DIR)/pd_t_world.png
+	magick $< +repage -crop '32x32+1024+592' $@
+
+$(BUILD_DIR)/pd_t_icon_highlighted.png: $(BUILD_DIR)/pd_t_world.png
+	magick $< +repage -crop '32x32+1056+592' $@
 
 $(BUILD_DIR)/pd_t_world.png: $(BUILD_DIR)/pd_t_world_gray.png $(BUILD_DIR)/fs_dither.exe
 	$(BUILD_DIR)/fs_dither.exe $< $@
@@ -138,6 +180,75 @@ $(BUILD_DIR)/pd_t_world_gray.png: $(BUILD_DIR)/pd_t_world.svg svg_to_png.sh
 $(BUILD_DIR)/pd_t_world.svg: world.svg select_layers.pl remove_unused_defs.pl | make_build_dir
 	perl select_layers.pl '^world.*' pd_t_world_gray.png $< | perl remove_unused_defs.pl > $@
 
+$(BUILD_DIR)/pd_t_trees.svg: trees.svg select_layers.pl remove_unused_defs.pl | make_build_dir
+	perl select_layers.pl '^world.*' t_trees.png $< | perl remove_unused_defs.pl > $@
+
+$(BUILD_DIR)/pd_t_trees0.svg: $(BUILD_DIR)/pd_t_trees.svg perturb_leaves.pl
+	perl perturb_leaves.pl 0 $< > $@
+
+$(BUILD_DIR)/pd_t_trees1.svg: $(BUILD_DIR)/pd_t_trees.svg perturb_leaves.pl
+	perl perturb_leaves.pl 1 $< > $@
+
+$(BUILD_DIR)/pd_t_trees2.svg: $(BUILD_DIR)/pd_t_trees.svg perturb_leaves.pl
+	perl perturb_leaves.pl 2 $< > $@
+
+$(BUILD_DIR)/pd_t_trees3.svg: $(BUILD_DIR)/pd_t_trees.svg perturb_leaves.pl
+	perl perturb_leaves.pl 3 $< > $@
+
+$(BUILD_DIR)/pd_t_trees4.svg: $(BUILD_DIR)/pd_t_trees.svg perturb_leaves.pl
+	perl perturb_leaves.pl 4 $< > $@
+
+$(BUILD_DIR)/pd_t_trees5.svg: $(BUILD_DIR)/pd_t_trees.svg perturb_leaves.pl
+	perl perturb_leaves.pl 5 $< > $@
+
+$(BUILD_DIR)/pd_t_trees6.svg: $(BUILD_DIR)/pd_t_trees.svg perturb_leaves.pl
+	perl perturb_leaves.pl 6 $< > $@
+
+$(BUILD_DIR)/pd_t_trees7.svg: $(BUILD_DIR)/pd_t_trees.svg perturb_leaves.pl
+	perl perturb_leaves.pl 7 $< > $@
+
+$(BUILD_DIR)/pd_t_trees0_gray.png: $(BUILD_DIR)/pd_t_trees0.svg svg_to_png.sh
+	bash svg_to_png.sh $< $@ 0 256 1024 384 $(TREE_DPI)
+
+$(BUILD_DIR)/pd_t_trees1_gray.png: $(BUILD_DIR)/pd_t_trees1.svg svg_to_png.sh
+	bash svg_to_png.sh $< $@ 0 256 1024 384 $(TREE_DPI)
+
+$(BUILD_DIR)/pd_t_trees2_gray.png: $(BUILD_DIR)/pd_t_trees2.svg svg_to_png.sh
+	bash svg_to_png.sh $< $@ 0 256 1024 384 $(TREE_DPI)
+
+$(BUILD_DIR)/pd_t_trees3_gray.png: $(BUILD_DIR)/pd_t_trees3.svg svg_to_png.sh
+	bash svg_to_png.sh $< $@ 0 256 1024 384 $(TREE_DPI)
+
+$(BUILD_DIR)/pd_t_trees4_gray.png: $(BUILD_DIR)/pd_t_trees4.svg svg_to_png.sh
+	bash svg_to_png.sh $< $@ 0 256 1024 384 $(TREE_DPI)
+
+$(BUILD_DIR)/pd_t_trees5_gray.png: $(BUILD_DIR)/pd_t_trees5.svg svg_to_png.sh
+	bash svg_to_png.sh $< $@ 0 256 1024 384 $(TREE_DPI)
+
+$(BUILD_DIR)/pd_t_trees6_gray.png: $(BUILD_DIR)/pd_t_trees6.svg svg_to_png.sh
+	bash svg_to_png.sh $< $@ 0 256 1024 384 $(TREE_DPI)
+
+$(BUILD_DIR)/pd_t_trees7_gray.png: $(BUILD_DIR)/pd_t_trees7.svg svg_to_png.sh
+	bash svg_to_png.sh $< $@ 0 256 1024 384 $(TREE_DPI)
+
+$(BUILD_DIR)/pd_t_trees_gray.png: $(BUILD_DIR)/pd_t_trees0_gray.png $(BUILD_DIR)/pd_t_trees1_gray.png $(BUILD_DIR)/pd_t_trees2_gray.png $(BUILD_DIR)/pd_t_trees3_gray.png $(BUILD_DIR)/pd_t_trees4_gray.png $(BUILD_DIR)/pd_t_trees5_gray.png $(BUILD_DIR)/pd_t_trees6_gray.png $(BUILD_DIR)/pd_t_trees7_gray.png
+	magick $^ -append $@
+
+$(BUILD_DIR)/pd_t_landmarks.svg: landmarks.svg select_layers.pl remove_unused_defs.pl | make_build_dir
+	perl select_layers.pl '^world.*' t_landmarks.png $< | perl remove_unused_defs.pl > $@
+
+$(BUILD_DIR)/pd_t_extra_landmarks_gray.png: $(BUILD_DIR)/pd_t_landmarks.svg svg_to_png.sh
+	bash svg_to_png.sh $< $@
+
+$(BUILD_DIR)/pd_t_fireworks.svg: generate_fireworks.pl | make_build_dir
+	perl $< > $@
+
+$(BUILD_DIR)/pd_t_fireworks_gray.png: $(BUILD_DIR)/pd_t_fireworks.svg svg_to_png.sh
+	bash svg_to_png.sh $< $@
+
+$(BUILD_DIR)/pd_t_fireworks.png: $(BUILD_DIR)/pd_t_fireworks_gray.png $(BUILD_DIR)/fs_dither.exe
+	$(BUILD_DIR)/fs_dither.exe $< $@
+
 # Itch cover is generated by selecting a subset of layers and rasterizing
 # that with anti-aliasing enabled.
 $(BUILD_DIR)/t_itch_cover.png: $(BUILD_DIR)/t_itch_cover.svg $(BUILD_DIR)/aa_svg_to_png.sh
@@ -145,13 +256,6 @@ $(BUILD_DIR)/t_itch_cover.png: $(BUILD_DIR)/t_itch_cover.svg $(BUILD_DIR)/aa_svg
 
 $(BUILD_DIR)/t_itch_cover.svg: world.svg select_layers.pl remove_unused_defs.pl | make_build_dir
 	perl select_layers.pl '^world.*' t_itch_cover_gray.png $< | perl remove_unused_defs.pl > $@
-
-# Placeholder images.
-$(BUILD_DIR)/pd_t_icon.png: $(BUILD_DIR)/pd_gray_icon.png $(BUILD_DIR)/fs_dither.exe
-	$(BUILD_DIR)/fs_dither.exe $< $@
-
-$(BUILD_DIR)/pd_gray_icon.png: Makefile | make_build_dir
-	magick -size 32x32 'xc:#ffffff' -colorspace Gray -font Helvetica-Bold -fill black -pointsize 30 -gravity center -annotate +0+0 'S' $@
 
 # }}}
 
@@ -170,6 +274,18 @@ $(BUILD_DIR)/fs_dither.exe: fs_dither.c | make_build_dir
 
 $(BUILD_DIR)/random_dither.exe: random_dither.c | make_build_dir
 	$(CC) $(CFLAGS) $< -lpng -o $@
+
+$(BUILD_DIR)/tile_dither.exe: tile_dither.c $(BUILD_DIR)/dither_array_pixel.c $(BUILD_DIR)/dither_array_alpha.c
+	$(CC) $(CFLAGS) $< -lpng -o $@
+
+$(BUILD_DIR)/dither_array_pixel.c: $(BUILD_DIR)/generate_symmetric_dither_array.exe
+	./$< pixel_pattern 1 > $@
+
+$(BUILD_DIR)/dither_array_alpha.c: $(BUILD_DIR)/generate_symmetric_dither_array.exe
+	./$< alpha_pattern 2 > $@
+
+$(BUILD_DIR)/generate_symmetric_dither_array.exe: generate_symmetric_dither_array.cc | make_build_dir
+	$(CXX) $(CFLAGS) -DTILE_SIZE=192 $< -o $@
 
 # Reduce the sizes of image tables.
 $(BUILD_DIR)/crop_table.exe: crop_table.c | make_build_dir
@@ -231,6 +347,7 @@ test: \
 	$(BUILD_DIR)/test_passed.select_layers \
 	$(BUILD_DIR)/test_passed.shrink_tiles \
 	$(BUILD_DIR)/test_passed.stack_bw \
+	$(BUILD_DIR)/test_passed.tile_dither \
 	$(BUILD_DIR)/test_passed.transparent_black \
 	$(BUILD_DIR)/test_passed.transparent_black_edge \
 	$(BUILD_DIR)/test_passed.v_mirror_table
@@ -261,6 +378,9 @@ $(BUILD_DIR)/test_passed.fs_dither: $(BUILD_DIR)/fs_dither.exe dither_test.sh
 
 $(BUILD_DIR)/test_passed.random_dither: $(BUILD_DIR)/random_dither.exe dither_test.sh
 	bash dither_test.sh $< && touch $@
+
+$(BUILD_DIR)/test_passed.tile_dither: $(BUILD_DIR)/tile_dither.exe tile_dither_test.sh
+	bash tile_dither_test.sh $< && touch $@
 
 $(BUILD_DIR)/test_passed.crop_table: $(BUILD_DIR)/crop_table.exe crop_table_test.sh
 	bash crop_table_test.sh $< && touch $@

@@ -11,7 +11,7 @@ extern const uint8_t kTranslucentBlack[65][16];
 extern const uint8_t kOpaqueGray[65][16];
 
 // generate_item_positions.pl
-#define ITEM_PILE_SIZE 40
+#define ITEM_PILE_SIZE 50
 extern const int kItemPile[ITEM_PILE_SIZE][2];
 
 // Build version.

@@ -1,10 +1,8 @@
 #ifndef ITEM_H_
 #define ITEM_H_
 
+#include"common.h"
 #include"trade.h"
-
-// A convenient pair type.
-typedef struct { int x, y; } XY;
 
 // States for a single item held by a player or trader.
 typedef struct

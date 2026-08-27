@@ -1,7 +1,7 @@
 name=Swap Meet
 author=uguu.org
-description=Connect the items with those who want them
+description=Trade items until you get your guitar back.
 bundleID=org.uguu.SwapMeet
-version=0.2
-buildNumber=2
+version=0.3
+buildNumber=3
 imagePath=launcher/

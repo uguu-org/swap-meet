@@ -207,9 +207,13 @@ $(BUILD_DIR)/%.test_passed: $(BUILD_DIR)/%.exe
 test: \
 	$(BUILD_DIR)/common_test.test_passed \
 	$(BUILD_DIR)/inline_constants.test_passed \
+	$(BUILD_DIR)/trade_test.test_passed \
 	$(BUILD_DIR)/strip_lua.test_passed
 
 $(BUILD_DIR)/common_test.exe: $(BUILD_DIR)/common_test.o
+	$(CC) $(CFLAGS) $^ -o $@
+
+$(BUILD_DIR)/trade_test.exe: $(BUILD_DIR)/trade_test.o $(BUILD_DIR)/trade.o
 	$(CC) $(CFLAGS) $^ -o $@
 
 $(BUILD_DIR)/inline_constants.test_passed: inline_constants.pl inline_constants_test.sh | make_build_dir

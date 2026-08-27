@@ -8,7 +8,7 @@ use constant PI => 3.14159265358979323846264338327950288419716939937510;
 use constant TRADER_RADIUS => 150;
 
 # Number of items in pile.
-use constant PILE_SIZE => 40;
+use constant PILE_SIZE => 50;
 
 # Item size in pixels.
 use constant ITEM_SIZE => 48;

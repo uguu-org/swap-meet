@@ -16,18 +16,21 @@ Trade items until you get your guitar back.
 
 At each trading place, there would be a sign that lists all the items that are requested (left) and offered (right).  Player can make the trade if they are on top of the sign, and they have all the requested items.  Once a trade is made, the rules are inverted as indicated by the arrow.  Player can get back what they traded (left) if they have everything that was offered (right).
 
-The goal is to make enough trades such that you get your guitar back.  This usually involves making several intermediate trades.  If hint display is enabled, you should be able to follow the black triangle to reach the goal, but note that multiple solutions may exist, possibly some with fewer trades.  Also note that the hint display might be hidden if it can't figure out a trade that is guaranteed to be a step forward, in which case you need to undo one of the earlier trades to make progress.
+The goal is to make enough trades such that you get your guitar back.  This usually involves making several intermediate trades.  If hint display is enabled, you should be able to follow the black triangle to reach the goal, but note that multiple solutions may exist, possibly some with fewer trades.
+
+If you wait a few seconds on the title screen, the game will run a demo mode and solve the puzzles automatically, alternating between easy and hard modes.  If hints are enabled, the demo will skip the exploration phase and go straight for the solutions, so you can get a sense of fastest possible time to each mode.
 
 ## FAQ
-
-Q: I enabled hint display in the middle of the game, but don't see a black triangle.\
-A: You might have diverged from a known solution path, please undo one of the earlier trades.
 
 Q: What's the difference between "easy" and "hard"?\
 A: "Hard" comes with more trade options available, so it's more difficult to plan a sequence to fulfill the goal.
 
+Q: The hints seem fairly random.\
+A: The hints are meant to show that a solution exists, and also help you find a way back to the known solution path if you got lost.  They are not always optimal.
+
 Q: What's the background music?\
 A: [Gnossienne 1](https://en.wikipedia.org/wiki/Gnossiennes) by Erik Satie.
 
-Q: Will you release the source code?\
-A: The source code will be released with the full version later, hopefully in a few weeks.
+## Source code
+
+https://github.com/uguu-org/swap-meet

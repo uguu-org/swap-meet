@@ -13,19 +13,22 @@
 #include"world.h"
 
 // Game difficulty settings.  See MAX_TRADER_COUNT in trade.h.
-//
-// Setting GAME_HARD_SIZE to MAX_TRADER_COUNT turns out to be too hard,
-// so the numbers here are a bit smaller.
-#define GAME_EASY_SIZE        10
-#define GAME_HARD_SIZE        20
+#define GAME_HARD_SIZE        MAX_TRADER_COUNT
+#define GAME_EASY_SIZE        (GAME_HARD_SIZE / 2)
 
-// Movement speed in pixels per frame.  Note that both velocities are even,
-// so we will always scroll by even number of pixels.
-#define ORTHOGONAL_SPEED      12
-#define DIAGONAL_SPEED        10
+// Milliseconds per tick.  Same as ms_per_tick in gnossienne.m4.
+#define MS_PER_TICK           70
 
 // Syntactic sugar.
 #define ANY_DIRECTION         (kButtonUp|kButtonDown|kButtonLeft|kButtonRight)
+#define ANY_BUTTON            (ANY_DIRECTION | kButtonA | kButtonB)
+
+// Wait this many milliseconds before starting demo mode.
+#define DEMO_START_DELAY      10000
+
+// Wait this many milliseconds before returning from completed demo to
+// title screen.
+#define DEMO_END_DELAY        5000
 
 // Millisecond timestamp at previous call to Update().
 static uint32_t g_last_update_time_ms;
@@ -49,8 +52,11 @@ typedef enum
    kGameTitleScreen,
    kGameTransitionGameToTitle,
    kGameTransitionTitleToGame,
+   kGameTransitionTitleToDemo,
    kGameInProgress,
    kGameOver,
+   kGameDemoInProgress,
+   kGameDemoDone,
    kGameInputTestRunning
 } GameState;
 static GameState g_game_state = kGameTitleScreen;
@@ -68,7 +74,6 @@ static int g_game_size;
 
 // Game completion stats.
 static int g_game_complete_duration_ms;
-static int g_game_total_trades;
 
 // Hint display options.
 static const char *kHintOptions[3] = { "hide", "stable", "flash" };
@@ -79,13 +84,6 @@ static int g_show_hints;
 
 // If nonzero, show frame rate in bottom left corner.
 static int g_debug_show_fps;
-
-// Selected instrument.  Currently always zero.
-//
-// This is meant as a feature for changing currently loaded instrument,
-// but that no longer works as of 3.1.0.
-// https://devforum.play.date/t/loadintosample-no-longer-replaces-sound-sample-as-of-3-1-0/25975
-static int g_sample_index;
 
 // Load game data.
 static int InitGame(PlaydateAPI *pd)
@@ -105,7 +103,7 @@ static int InitGame(PlaydateAPI *pd)
          break;
 
       case kInitBgm:
-         InitBgm(pd, g_sample_index);
+         InitBgm(pd, 0);
          break;
 
       default:
@@ -174,6 +172,23 @@ static void ShowTitleScreen(PlaydateAPI *pd)
       }
    }
 
+   // Start demo mode if we have waited long enough.
+   //
+   // Note that background music is not started in this case, but
+   // if it has started already, it will keep playing.
+   if( g_game_time_ms >= DEMO_START_DELAY )
+   {
+      g_game_time_ms = 0;
+      g_game_frames = 0;
+      g_game_state = kGameTransitionTitleToDemo;
+
+      // Demo alternates between easy and hard modes, depending on what was
+      // played last time.  If no game or demo has been played yet, first
+      // demo run will be in easy mode.
+      g_game_size = (g_game_size == GAME_EASY_SIZE ? GAME_HARD_SIZE
+                                                   : GAME_EASY_SIZE);
+   }
+
    // Special debug features, toggled by holding any direction on
    // D-pad at title screen for a few seconds.
    if( (pushed & ANY_DIRECTION) != 0 )
@@ -203,7 +218,7 @@ static void ShowTitleScreen(PlaydateAPI *pd)
 
 //////////////////////////////////////////////////////////////////////
 
-// Transition from title screen to start of game.
+// Transition from title screen to start of game or start of demo.
 static void TransitionTitleToGame(PlaydateAPI *pd)
 {
    if( g_game_frames < 15 )
@@ -222,12 +237,11 @@ static void TransitionTitleToGame(PlaydateAPI *pd)
          InitTraders(g_game_size);
          ResetWorld(g_game_size);
          g_game_complete_duration_ms = 0;
-         g_game_total_trades = 0;
       }
 
       // Draw game graphics.
       UpdateWorld();
-      DrawWorld(pd, g_game_size, g_game_frames);
+      DrawWorld(pd, g_game_size, g_song_time_ms / MS_PER_TICK);
 
       // Draw progressively more transparent white rectangles over
       // game graphics for fade-in effect.
@@ -236,11 +250,26 @@ static void TransitionTitleToGame(PlaydateAPI *pd)
                              (LCDColor)kTranslucentWhite[opacity]);
    }
 
+   // If we are currently in demo mode, any button press will return us
+   // to title screen.
+   if( g_game_state == kGameTransitionTitleToDemo )
+   {
+      PDButtons current, pushed, released;
+      pd->system->getButtonState(&current, &pushed, &released);
+      if( (pushed & ANY_BUTTON) != 0 )
+      {
+         MenuActionReset(pd);
+         return;
+      }
+   }
+
    if( g_game_frames >= 30 )
    {
       g_game_time_ms = 0;
       g_game_frames = 0;
-      g_game_state = kGameInProgress;
+      g_game_state = g_game_state == kGameTransitionTitleToDemo
+         ? kGameDemoInProgress
+         : kGameInProgress;
    }
 }
 
@@ -280,49 +309,12 @@ static int HandleInput(PlaydateAPI *pd)
 {
    PDButtons current, pushed, released;
    pd->system->getButtonState(&current, &pushed, &released);
-   int dx = 0, dy = 0;
-   if( (current & kButtonUp) != 0 )
-   {
-      if( (current & kButtonLeft) != 0 )
-      {
-         dx = -DIAGONAL_SPEED;
-         dy = -DIAGONAL_SPEED;
-      }
-      else if( (current & kButtonRight) != 0 )
-      {
-         dx = DIAGONAL_SPEED;
-         dy = -DIAGONAL_SPEED;
-      }
-      else
-      {
-         dy = -ORTHOGONAL_SPEED;
-      }
-   }
-   else if( (current & kButtonDown) != 0 )
-   {
-      if( (current & kButtonLeft) != 0 )
-      {
-         dx = -DIAGONAL_SPEED;
-         dy = DIAGONAL_SPEED;
-      }
-      else if( (current & kButtonRight) != 0 )
-      {
-         dx = DIAGONAL_SPEED;
-         dy = DIAGONAL_SPEED;
-      }
-      else
-      {
-         dy = ORTHOGONAL_SPEED;
-      }
-   }
-   else if( (current & kButtonLeft) != 0 )
-   {
-      dx = -ORTHOGONAL_SPEED;
-   }
-   else if( (current & kButtonRight) != 0 )
-   {
-      dx = ORTHOGONAL_SPEED;
-   }
+   const int dx =
+      (current & kButtonLeft) != 0 ? -1
+                                   : (current & kButtonRight) != 0 ? 1 : 0;
+   const int dy =
+      (current & kButtonUp) != 0 ? -1
+                                 : (current & kButtonDown) != 0 ? 1 : 0;
    MakeMove(dx, dy);
    if( (pushed & kButtonA) != 0 )
       return 1;
@@ -344,25 +336,64 @@ static void RunGame(PlaydateAPI *pd)
       if( MakeTrade(g_game_size, button_pressed) )
       #endif
       {
-         g_game_total_trades++;
          if( ReachedGoal() )
          {
             g_game_complete_duration_ms = g_game_time_ms;
             g_game_state = kGameOver;
          }
       }
+   }
+
+   // Draw game state.
+   UpdateWorld();
+   DrawWorld(pd, g_game_size, g_song_time_ms / MS_PER_TICK);
+   if( g_show_hints )
+   {
+      if( g_show_hints == 1 || ((g_game_frames & 15) < 13) )
+         DrawHint(pd);
+   }
+}
+
+// Run non-interactive demo.
+static void RunDemo(PlaydateAPI *pd)
+{
+   // Handle input.
+   PDButtons current, pushed, released;
+   pd->system->getButtonState(&current, &pushed, &released);
+   if( (pushed & ANY_BUTTON) != 0 )
+   {
+      MenuActionReset(pd);
+      return;
+   }
+
+   // Generate movement.
+   #ifndef NDEBUG
+      const int done = AutoMove(pd, g_game_size, g_game_time_ms, g_show_hints);
+   #else
+      const int done = AutoMove(g_game_size, g_game_time_ms, g_show_hints);
+   #endif
+   if( done )
+   {
+      if( ReachedGoal() )
+      {
+         g_game_complete_duration_ms = g_game_time_ms;
+         g_game_state = kGameDemoDone;
+      }
       else
       {
-         // TODO: we should give player some feedback that the trade
-         // did not happen, either because they are not close enough
-         // to the trader or because they don't have all the requested
-         // items, but for now we do nothing.
+         // We couldn't move anymore, but we did not reach the goal.
+         // This means the hint system got stuck.  The hint system
+         // should be sufficiently robust so this should never happen,
+         // but you never know.  Rather than idling in the demo loop
+         // and wait for player input, we will go back to the title
+         // screen right away.
+         MenuActionReset(pd);
       }
    }
 
    // Draw game state.
    UpdateWorld();
-   DrawWorld(pd, g_game_size, g_game_frames);
+   DrawWorld(pd, g_game_size, g_song_time_ms / MS_PER_TICK);
    if( g_show_hints )
    {
       if( g_show_hints == 1 || ((g_game_frames & 15) < 13) )
@@ -375,14 +406,35 @@ static void RunGame(PlaydateAPI *pd)
 // Run game over screen.
 static void GameOver(PlaydateAPI *pd)
 {
-   // Press button to return to title screen.
-   if( HandleInput(pd) )
-      MenuActionReset(pd);
-
-   // Draw game stats on top of game state.
+   // Draw game state and fireworks, then draw end game stats on top.
    UpdateWorld();
-   DrawWorld(pd, g_game_size, g_game_frames);
-   DrawGameStats(pd, g_game_complete_duration_ms, g_game_total_trades);
+   DrawWorld(pd, g_game_size, g_song_time_ms / MS_PER_TICK);
+   DrawAndUpdateFireworks(pd, g_game_frames, g_song_time_ms / MS_PER_TICK / 8);
+   DrawGameStats(pd, g_game_complete_duration_ms, GetTotalTrades());
+
+   // Handle input after drawing fireworks.  This is because an input
+   // might cause the game timers to reset, which would cause the
+   // fireworks to be blanked out.  We want the fireworks to still be
+   // visible while we draw the fade out layer on top, so we handle
+   // input after drawing fireworks.
+   if( g_game_state == kGameOver )
+   {
+      // Press button to return to title screen.
+      if( HandleInput(pd) )
+         MenuActionReset(pd);
+   }
+   else
+   {
+      // Press button to return to title screen.
+      // Also return to title screen if we have waited a few seconds.
+      PDButtons current, pushed, released;
+      pd->system->getButtonState(&current, &pushed, &released);
+      if( (pushed & ANY_BUTTON) != 0 ||
+          g_game_time_ms - g_game_complete_duration_ms >= DEMO_END_DELAY )
+      {
+         MenuActionReset(pd);
+      }
+   }
 }
 
 //////////////////////////////////////////////////////////////////////
@@ -438,9 +490,12 @@ static int Update(void *userdata)
    {
       case kGameTitleScreen:              ShowTitleScreen(pd);          break;
       case kGameTransitionTitleToGame:    TransitionTitleToGame(pd);    break;
-      case kGameTransitionGameToTitle:    TransitionGameToTitle(pd);    break;
+      case kGameTransitionTitleToDemo:    TransitionTitleToGame(pd);    break;
       case kGameInProgress:               RunGame(pd);                  break;
+      case kGameDemoInProgress:           RunDemo(pd);                  break;
       case kGameOver:                     GameOver(pd);                 break;
+      case kGameDemoDone:                 GameOver(pd);                 break;
+      case kGameTransitionGameToTitle:    TransitionGameToTitle(pd);    break;
       case kGameInputTestRunning:         RunInputTest(pd);             break;
    }
 
@@ -497,17 +552,23 @@ int eventHandler(PlaydateAPI *pd, PDSystemEvent event, uint32_t unused_arg)
             3,
             MenuActionHint,
             pd);
-
          MenuActionReset(pd);
+
+         // Skip the transition state for initial start up.  This is
+         // so that there is a seamless transition from card view to
+         // game title screen.
+         g_game_state = kGameTitleScreen;
          break;
 
       case kEventPause:
          switch( g_game_state )
          {
-            case kGameTitleScreen: SetTitleMenuImage(pd);       break;
-            case kGameInProgress:  SetGameRunningMenuImage(pd); break;
-            case kGameOver:        SetGameOverMenuImage(pd);    break;
-            default:               SetTransitionMenuImage(pd);  break;
+            case kGameTitleScreen:     SetTitleMenuImage(pd);        break;
+            case kGameInProgress:      SetGameRunningMenuImage(pd);  break;
+            case kGameDemoInProgress:  SetGameOverMenuImage(pd);     break;
+            case kGameDemoDone:        SetGameOverMenuImage(pd);     break;
+            case kGameOver:            SetGameOverMenuImage(pd);     break;
+            default:                   SetTransitionMenuImage(pd);   break;
          }
          break;
 

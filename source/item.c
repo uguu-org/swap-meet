@@ -26,12 +26,12 @@ Item *MoveItem(ItemList *from, int from_index, ItemList *to)
 void RotateListHead(ItemList *items, int head_count)
 {
    assert(head_count > 0);
-   assert(head_count <= 4);
+   assert(head_count <= MAX_TRANSACTION_SIZE);
    assert(head_count <= items->item_count);
    if( items->item_count <= head_count )
       return;
 
-   Item buffer[4];
+   Item buffer[MAX_TRANSACTION_SIZE];
    const int split = items->item_count - head_count;
    memcpy(buffer,
           &(items->item[0]),
@@ -48,12 +48,12 @@ void RotateListHead(ItemList *items, int head_count)
 void RotateListTail(ItemList *items, int tail_count)
 {
    assert(tail_count > 0);
-   assert(tail_count <= 4);
+   assert(tail_count <= MAX_TRANSACTION_SIZE);
    assert(tail_count <= items->item_count);
    if( items->item_count <= tail_count )
       return;
 
-   Item buffer[4];
+   Item buffer[MAX_TRANSACTION_SIZE];
    const int split = items->item_count - tail_count;
    memcpy(buffer,
           &(items->item[split]),

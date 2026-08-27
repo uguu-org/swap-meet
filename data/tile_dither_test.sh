@@ -1,7 +1,7 @@
 #!/bin/bash
 
 if [[ $# -ne 1 ]]; then
-   echo "$0 {dither.exe}"
+   echo "$0 {tile_dither.exe}"
    exit 1
 fi
 TOOL=$1
@@ -87,7 +87,8 @@ check_output "$LINENO: stdin + stdout"
 # ................................................................
 # Test dither pattern.
 
-# All white.
+# All white.  Note that the test image needs to be sufficiently large
+# to fully exercise the dither array.
 ppmmake rgb:ff/ff/ff 256 256 | pnmtopng > "$INPUT_IMAGE"
 cat <<EOT > "$EXPECTED_PIXELS"
 P1
@@ -170,6 +171,45 @@ if [[ $BLACK_PIXEL_COUNT -lt 65 ]] || \
    [[ $WHITE_PIXEL_COUNT -lt 15 ]] || \
    [[ $WHITE_PIXEL_COUNT -gt 35 ]]; then \
    die "FAIL: $LINENO: gray=25%, black=$BLACK_PIXEL_COUNT, white=$WHITE_PIXEL_COUNT"
+fi
+
+# ................................................................
+# Test rotational symmetry.
+
+ppmmake rgb:40/40/40 12 12 | ppmtopgm > "$INPUT_PIXELS"
+ppmmake rgb:c0/c0/c0 12 12 | ppmtopgm > "$INPUT_ALPHA"
+pnmtopng -alpha="$INPUT_ALPHA" "$INPUT_PIXELS" > "$INPUT_IMAGE"
+
+"./$TOOL" "$INPUT_IMAGE" "$ACTUAL_OUTPUT" 12 12
+PIXEL_MD5=$(pngtopnm "$ACTUAL_OUTPUT" | md5sum)
+ALPHA_MD5=$(pngtopnm -alpha "$ACTUAL_OUTPUT" | md5sum)
+
+ROTATED_PIXEL_MD5=$(pngtopnm "$ACTUAL_OUTPUT" | pnmflip -rotate180 | md5sum)
+ROTATED_ALPHA_MD5=$(pngtopnm -alpha "$ACTUAL_OUTPUT" | pnmflip -rotate180 | md5sum)
+
+if [[ "$PIXEL_MD5" != "$ROTATED_PIXEL_MD5" ]]; then
+   die "FAIL: $LINENO: pixels lack rotational symmetry"
+fi
+if [[ "$ALPHA_MD5" != "$ROTATED_ALPHA_MD5" ]]; then
+   die "FAIL: $LINENO: alpha pixels lack rotational symmetry"
+fi
+
+ppmmake rgb:aa/aa/aa 64 32 | ppmtopgm > "$INPUT_PIXELS"
+ppmmake rgb:33/33/33 64 32 | ppmtopgm > "$INPUT_ALPHA"
+pnmtopng -alpha="$INPUT_ALPHA" "$INPUT_PIXELS" > "$INPUT_IMAGE"
+
+"./$TOOL" "$INPUT_IMAGE" "$ACTUAL_OUTPUT" 16 16
+PIXEL_MD5=$(pngtopnm "$ACTUAL_OUTPUT" | md5sum)
+ALPHA_MD5=$(pngtopnm -alpha "$ACTUAL_OUTPUT" | md5sum)
+
+ROTATED_PIXEL_MD5=$(pngtopnm "$ACTUAL_OUTPUT" | pnmflip -rotate180 | md5sum)
+ROTATED_ALPHA_MD5=$(pngtopnm -alpha "$ACTUAL_OUTPUT" | pnmflip -rotate180 | md5sum)
+
+if [[ "$PIXEL_MD5" != "$ROTATED_PIXEL_MD5" ]]; then
+   die "FAIL: $LINENO: pixels lack rotational symmetry"
+fi
+if [[ "$ALPHA_MD5" != "$ROTATED_ALPHA_MD5" ]]; then
+   die "FAIL: $LINENO: alpha pixels lack rotational symmetry"
 fi
 
 # ................................................................

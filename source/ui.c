@@ -84,12 +84,11 @@ static void DrawBoxedText(PlaydateAPI *pd,
 // Draw title screen.
 void DrawTitleScreen(PlaydateAPI *pd)
 {
-   pd->graphics->clear(kColorWhite);
+   // Don't need to clear screen, since title image covers every pixel.
    pd->graphics->drawBitmap(g_title, 0, 0, kBitmapUnflipped);
 
    pd->graphics->setFont(g_light_font);
    DrawBoxedText(pd, g_light_font, "(c)2026 uguu.org", 255, 217);
-   DrawBoxedText(pd, g_light_font, "PlayJam 10 \"Swap\"", 0, 217);
 
    pd->graphics->setFont(g_bold_font);
    DrawBoxedText(pd, g_bold_font, "A: Easy mode   B: Hard mode", 89, 188);
