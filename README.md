@@ -2,6 +2,8 @@
 
 Trade items until you get your guitar back.
 
+https://uguu-org.itch.io/swap-meet
+
 ## Gameplay
 
 + **D-Pad**: move player around.
@@ -30,7 +32,3 @@ A: The hints are meant to show that a solution exists, and also help you find a 
 
 Q: What's the background music?\
 A: [Gnossienne 1](https://en.wikipedia.org/wiki/Gnossiennes) by Erik Satie.
-
-## Source code
-
-https://github.com/uguu-org/swap-meet
